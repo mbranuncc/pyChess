@@ -1,0 +1,31 @@
+<Chess>
+    <Color type="White">
+ <!--       <Piece type="Pawn">
+            <position>a2</position>
+            <position>b2</position>
+            <position>c2</position>
+            <position>d2</position>
+            <position>e2</position>
+            <position>f2</position>
+            <position>g2</position>
+            <position>h2</position>
+        </Piece> -->
+
+        <Piece type="Rook">
+            <position>a1</position>
+        </Piece>
+    </Color>
+
+ <!--   <Color type="Black">
+        <Piece type="Pawn">
+            <position>a7</position>
+            <position>b7</position>
+            <position>c7</position>
+            <position>d7</position>
+            <position>e7</position>
+            <position>f7</position>
+            <position>g7</position>
+            <position>h7</position>
+        </Piece>
+    </Color> -->
+</Chess>

@@ -1,0 +1,15 @@
+<Chess>
+    <Piece type="Pawn">
+        <move>+1,0</move>
+        <move>+5,0:i</move>
+        <move>+1,+1:t</move>
+        <move>+1,-1:t</move>
+    </Piece>
+
+    <Piece type="Rook">
+        <move>+1,0:r</move>
+        <move>-1,0:r</move>
+        <move>0,+1:f</move>
+        <move>0,-1:f</move>
+    </Piece>
+</Chess>
