@@ -1,7 +1,7 @@
 <Chess>
     <Piece type="Pawn">
         <move>+1,0</move>
-        <move>+5,0:i</move>
+        <move>+2,0:i</move>
         <move>+1,+1:t</move>
         <move>+1,-1:t</move>
     </Piece>
@@ -11,5 +11,12 @@
         <move>-1,0:r</move>
         <move>0,+1:f</move>
         <move>0,-1:f</move>
+    </Piece>
+
+    <Piece type="Bishop">
+        <move>+1,+1:d</move>
+        <move>+1,-1:d</move>
+        <move>-1,+1:d</move>
+        <move>-1,-1:d</move>
     </Piece>
 </Chess>

@@ -5,6 +5,8 @@ from pyglet import image
 from pyglet.gl import *
 from configparser import ConfigParser
 from enum import Enum
+from api import ChessAPI
+import json
 
 class Visual():
     window = []
@@ -21,9 +23,11 @@ class VisualBoard( Visual ):
     darkColor = (118,150,86)
     highlightColor = (186,202,68)
     baseBorderColor = (0,0,0)
-    configFile = 'visual_config.ini'
+    movesHighlightColor = ( 28, 27, 239 )
+    configFile = 'chess_config.ini'
     num_pieces = 0
     current_focus = [ -1, -1 ]
+    highlightedAvailableMoves = []
 
     piece_selected = -1
 
@@ -147,14 +151,14 @@ class VisualBoard( Visual ):
     def setFocus( self, i, j ):
         self.current_focus = [ i, j ]
 
-    def highlightFocus( self ):
-        if( self.current_focus[0] != -1 and self.current_focus[1] != -1 ):
-            rec = self.getSquare( self.current_focus[0], self.current_focus[1] )
-            rec.border_color = self.highlightColor       
+    def highlight( self, i, j, color ):
+        if( i != -1 and j != -1 ):
+            rec = self.getSquare( i, j )
+            rec.border_color = color    
 
-    def deHighlightFocus( self ):
-        if( self.current_focus[0] != -1 and self.current_focus[1] != -1 ):
-            self.getSquare( self.current_focus[0], self.current_focus[1] ).border_color = self.baseBorderColor
+    def deHighlight( self, i, j ):
+        if( i != -1 and j != -1 ):
+            self.getSquare( i, j ).border_color = self.baseBorderColor
 
     @staticmethod
     def getSquareCenter( square ):
@@ -185,9 +189,46 @@ class VisualBoard( Visual ):
 
 vb = VisualBoard( 8, 8, 64, 64 )
 
-vb.addPiece( VisualBoard.ChessPiece.whitePawn, 0, 1 )
-vb.addPiece( VisualBoard.ChessPiece.blackPawn, 0, 6 )
-vb.addPiece( VisualBoard.ChessPiece.whitePawn, 1, 1 )
+config = ConfigParser()
+config.read( 'chess_config.ini' )
+capi = ChessAPI( config.get( 'network', 'host' ), int(config.getfloat( 'network', 'port' ) ) )
+capiMessage = capi.ChessMessageHandler()
+
+# vb.addPiece( VisualBoard.ChessPiece.whitePawn, 0, 1 )
+# vb.addPiece( VisualBoard.ChessPiece.blackPawn, 0, 6 )
+# vb.addPiece( VisualBoard.ChessPiece.whitePawn, 1, 1 )
+
+# request information about the current board configuration
+msg = capiMessage.generator( capiMessage.Request.INIT_REQUEST )
+reply = capi.send_message( msg )
+print( reply )
+reply = json.loads( reply )
+
+for pc in reply['whitePawn']:
+    vb.addPiece( VisualBoard.ChessPiece.whitePawn, pc[1]-1, pc[0]-1 )
+for pc in reply['blackPawn']:
+    vb.addPiece( VisualBoard.ChessPiece.blackPawn, pc[1]-1, pc[0]-1 )
+for pc in reply['whiteRook']:
+    vb.addPiece( VisualBoard.ChessPiece.whiteRook, pc[1]-1, pc[0]-1 )
+for pc in reply['blackRook']:
+    vb.addPiece( VisualBoard.ChessPiece.blackRook, pc[1]-1, pc[0]-1 )
+for pc in reply['whiteBishop']:
+    vb.addPiece( VisualBoard.ChessPiece.whiteBishop, pc[1]-1, pc[0]-1 )
+for pc in reply['blackBishop']:
+    vb.addPiece( VisualBoard.ChessPiece.blackBishop, pc[1]-1, pc[0]-1 )
+for pc in reply['whiteKnight']:
+    vb.addPiece( VisualBoard.ChessPiece.whiteKnight, pc[1]-1, pc[0]-1 )
+for pc in reply['blackKnight']:
+    vb.addPiece( VisualBoard.ChessPiece.blackKnight, pc[1]-1, pc[0]-1 )
+for pc in reply['whiteQueen']:
+    vb.addPiece( VisualBoard.ChessPiece.whiteQueen, pc[1]-1, pc[0]-1 )
+for pc in reply['blackQueen']:
+    vb.addPiece( VisualBoard.ChessPiece.blackQueen, pc[1]-1, pc[0]-1 )
+for pc in reply['whiteKing']:
+    vb.addPiece( VisualBoard.ChessPiece.whiteKing, pc[1]-1, pc[0]-1 )
+for pc in reply['blackKing']:
+    vb.addPiece( VisualBoard.ChessPiece.blackKing, pc[1]-1, pc[0]-1 )
+
 
 @vb.window.event
 def on_draw():
@@ -208,21 +249,48 @@ def on_mouse_press( x, y, button, modifiers):
     if( button == pyglet.window.mouse.LEFT ):
         try:
             i, j = vb.getCoordinateSquare( x, y )
-            vb.deHighlightFocus()
+            vb.deHighlight( vb.current_focus[0], vb.current_focus[1] )
             vb.setFocus( i, j )
-            vb.highlightFocus()
+            vb.highlight( vb.current_focus[0], vb.current_focus[1], vb.highlightColor )
 
             # check if a piece is on that square
             if( vb.piece_selected < 0 ):
                 vb.piece_selected =  vb.pieceOnSquare( i, j )
+                if( vb.piece_selected != -1 ):
+                    # get information about what moves piece can perform
+                    msg = capiMessage.generator( capiMessage.Request.AVAILABLE_MOVES_REQUEST, j+1, i+1 )
+                    reply = capi.send_message( msg )
+                    reply = json.loads( reply )
+                    print( reply )
+                    for move in reply['moves']:
+                        vb.highlight( move[1]-1, move[0]-1, vb.movesHighlightColor )
+                        vb.highlightedAvailableMoves.append( [move[1]-1, move[0]-1] )
+                    pass
             else:
-                vb.Pieces[ vb.piece_selected ][2] = i
-                vb.Pieces[ vb.piece_selected ][3] = j
+                # before updating position, check to ensure that move is legal
+                msg = capiMessage.generator( capiMessage.Request.MOVE_REQUEST, \
+                        vb.Pieces[ vb.piece_selected ][3]+1, vb.Pieces[ vb.piece_selected ][2]+1, \
+                            j+1, i+1 )
+                print( msg )
+                reply = capi.send_message( msg )
+                print( reply )
+                reply = json.loads( reply )
+                if( reply['status'] == 1 ):
+                    vb.Pieces[ vb.piece_selected ][2] = i
+                    vb.Pieces[ vb.piece_selected ][3] = j
+
                 vb.piece_selected = -1
+
+                # dehighlight all available move cells
+                for h in vb.highlightedAvailableMoves:
+                    vb.deHighlight( h[0], h[1] )
         except:
             pass
     elif( button == pyglet.window.mouse.RIGHT ):
         vb.piece_selected = -1
+        # dehighlight all available move cells
+        for h in vb.highlightedAvailableMoves:
+            vb.deHighlight( h[0], h[1] )
 
 @vb.window.event
 def on_resize(width, height):
