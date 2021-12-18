@@ -19,4 +19,33 @@
         <move>-1,+1:d</move>
         <move>-1,-1:d</move>
     </Piece>
+
+    <Piece type="Knight">
+        <move>+2,-1</move>
+        <move>+2,+1</move>
+        <move>+1,+2</move>
+        <move>+1,-2</move>
+        <move>-1,+2</move>
+        <move>-1,-2</move>
+        <move>-2,-1</move>
+        <move>-2,+1</move>
+    </Piece>
+
+    <Piece type="Queen">
+        <move>+1,0:r</move>
+        <move>-1,0:r</move>
+        <move>0,+1:f</move>
+        <move>0,-1:f</move>
+        <move>+1,+1:d</move>
+        <move>+1,-1:d</move>
+        <move>-1,+1:d</move>
+        <move>-1,-1:d</move>
+    </Piece>
+
+    <Piece type="King">
+        <move>+1,0</move>
+        <move>0,+1</move>
+        <move>-1,0</move>
+        <move>0,-1</move>
+    </Piece>
 </Chess>

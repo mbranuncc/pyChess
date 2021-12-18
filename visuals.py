@@ -116,7 +116,7 @@ class VisualBoard( Visual ):
         i = 0
         j = 0
         for square in square_info:
-            rec = shapes.BorderedRectangle(x=square[0], y=square[1], width=square[2], height=square[3], border=3, border_color=self.baseBorderColor, batch=self.batch )
+            rec = shapes.BorderedRectangle(x=square[0], y=square[1], width=square[2], height=square[3], border=2, border_color=self.baseBorderColor, batch=self.batch )
             rec.opacity = 250
 
             Matrix[ i ][ j ] = rec
@@ -179,10 +179,10 @@ class VisualBoard( Visual ):
         return boxes
 
     def pieceOnSquare( self, i, j ):
-        for ind in range( 0, len( self.Pieces ) ):
-            pc = self.Pieces[ ind ]
+        for key in self.Pieces:
+            pc = self.Pieces[ key ]
             if( pc[2] == i and pc[3] == j ):
-                return ind
+                return key
 
         return -1
 
@@ -239,8 +239,8 @@ def on_draw():
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     vb.batch.draw()
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-    for i in range( 0, len(vb.Pieces) ):
-        piece_info = vb.Pieces[ i ]
+    for key in vb.Pieces:
+        piece_info = vb.Pieces[ key ]
         cx, cy = vb.getSquareCenter( vb.getSquare( piece_info[2], piece_info[3] ) )
         piece_info[4].blit( cx, cy, 0 )
 
@@ -276,6 +276,12 @@ def on_mouse_press( x, y, button, modifiers):
                 print( reply )
                 reply = json.loads( reply )
                 if( reply['status'] == 1 ):
+                    # if enemy piece is at new location, remove it
+                    for key in vb.Pieces:
+                        if( i == vb.Pieces[ key ][2] and j == vb.Pieces[ key ][3] ):
+                            del vb.Pieces[ key ]
+                            break
+
                     vb.Pieces[ vb.piece_selected ][2] = i
                     vb.Pieces[ vb.piece_selected ][3] = j
 

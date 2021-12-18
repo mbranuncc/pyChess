@@ -143,10 +143,10 @@ class ChessAPI():
                 except:
                     pass
             elif( reply[ 'type' ] == "AVAILABLE_MOVES_REQUEST" ):
-                try:
+                # try:
                     otpt = self.callbacks[ "AVAILABLE_MOVES_REQUEST" ]( reply )
-                except:
-                    pass
+                # except:
+                    # pass
             elif( reply[ 'type' ] == "AVAILABLE_MOVES_RESPONSE" ):
                 try:
                     otpt = self.callbacks[ "AVAILABLE_MOVES_RESPONSE" ]
@@ -173,10 +173,10 @@ class ChessAPI():
                 except:
                     pass
             elif( reply[ 'type' ] == "MOVE_REQUEST" ):
-                try:
+                # try:
                     otpt = self.callbacks[ "MOVE_REQUEST" ]( reply )
-                except:
-                    pass
+                # except:
+                #     pass
             elif( reply[ 'type' ] == "MOVE_RESPONSE" ):
                 try:
                     otpt = self.callbacks[ "MOVE_RESPONSE" ]( reply )
