@@ -35,6 +35,7 @@ def available_moves_cb( reply ):
     msg['piece'] = pc.__str__()
     moves = pc.legal_move_list_generator()
     msg[ 'moves' ] = [ Piece.pos2rankFile( e ) for e in moves ]
+    print( msg )
     return json.dumps( msg )
 
 def current_board_cb( reply ):

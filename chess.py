@@ -90,6 +90,16 @@ class Chess( metaclass=Logged ):
     def registerBoard( self, b ):
         self.board = b
 
+    def returnPiecefromGraveyard( self, target_pc ):
+        if( len( self.graveyard ) < 1 ):
+            return
+        for pc in reversed( self.graveyard ):
+            if( target_pc._location == pc._location ):
+                self.graveyard.remove( pc )
+                self.pieces.append( pc )
+                break
+        pass
+
     def sendPieceToGraveyard( self, target_pc ):
         t_rank, t_file = target_pc.pos2rankFile( target_pc._location )
         for pc in self.pieces:
@@ -97,14 +107,129 @@ class Chess( metaclass=Logged ):
             if( t_rank == rank and t_file == file ):
                 self.pieces.remove( pc )
                 self.graveyard.append( pc )
-                print( "Capturing Piece" )
         pass
 
+    def verifyGameIntegrity( self ):
+        # to be run at the end of each loop to perform mundane tasks to ensure
+        # that everything is how it should be i.e.
+        # -> both kings exist
+        # -> both teams have non-zero number of pieces
+        # -> (maybe) both kings aren't in check(mate)
+        curr_turn = self.turn
+
+        whiteKing = self.getPiecesByName( "King[White]" )
+        assert( whiteKing != -1 )
+        checkers = self.inCheck( whiteKing[0] )
+        assert( checkers != -1 )
+        if( len( checkers ) > 0 ):
+            print( "White King in check" )
+            if( self.inCheckmate( whiteKing[0] ) ):
+                print( "White in Checkmate" )
+
+        blackKing = self.getPiecesByName( "King[Black]" )
+        assert( blackKing != -1 )
+        checkers = self.inCheck( blackKing[0] )
+        assert( checkers != -1 )
+        if( len( checkers ) > 0 ):
+            print( "Black King in check" )
+            # check if it is checkmate
+            if( self.inCheckmate( blackKing[0] ) ):
+                print( "Black in Checkmate" )
+
+        self.turn = curr_turn
+        pass
+
+    def getPiecesByColor( self, color: str ):
+        piece_list = []
+        for pc in self.pieces:
+            if( pc._color.upper() == color.upper() ):
+                piece_list.append( pc )
+        return piece_list
+
+    def getPiecesByName( self, name: str ):
+        piece_list = []
+        for pc in self.pieces:
+            if( pc.__str__().upper() == name.upper() ):
+                piece_list.append( pc )
+            pass
+        return piece_list
+
+    def inCheckmate( self, king ):
+        # this is going to be much harder than check...
+        # need to loop through every piece on king's team and
+        # see if any piece has available moves.
+        # if no pieces on the kings team have any moves, then its checkmate
+
+        # get all the pieces on the kings team
+        c_pieces = self.getPiecesByColor( king._color )
+
+        for pc in c_pieces:
+            moves = pc.legal_move_list_generator()
+            if( len( moves ) > 0 ):
+                return 0
+        return 1
+            
+    def inCheck( self, king ):
+        # is the piece actually a king?
+        if not "King" in king.__str__():
+            return -1
+
+        # proposed algorithm for verifying check
+        # 1. search ranks, files and diagonals up to next piece
+        # 2. check if piece is enemy and if enemy can move in a way to create check
+        # 3. check for knight moves (TODO)
+        searchSpaces = {}
+        searchSpaces[ 'rightRank' ] = [ 0, +1 ]
+        searchSpaces[ 'leftRank' ] = [ 0, -1 ]
+        searchSpaces[ 'downFile' ] = [ +1, 0 ]
+        searchSpaces[ 'upFile' ] = [ -1, 0  ]
+        searchSpaces[ 'upRight' ] = [ +1, +1 ]
+        searchSpaces[ 'upLeft' ] = [ -1, +1 ]
+        searchSpaces[ 'downLeft' ] = [ -1, -1 ]
+        searchSpaces[ 'downRight' ] = [ +1, -1 ]
+
+        checkers = []
+
+        for key in searchSpaces:
+            # reset origin
+            tmp_rank, tmp_file = Piece.pos2rankFile( king._location )
+            tmp_rank += searchSpaces[ key ][0]
+            tmp_file += searchSpaces[ key ][1]
+            # find next piece along direction or edge of board
+            while( tmp_rank in range( 1, self.board.num_ranks+1 ) and\
+                    tmp_file in range( 1, self.board.num_files+1 ) ):
+                pc = self.pieceAtRankFile( tmp_rank, tmp_file )
+                if( pc != -1 and pc._color != king._color ):
+                    # a piece has been found along this line, check if it is dangerous
+                    # this is done by generating its list of allowable moves
+                    # and see if the King's square is one of those moves
+                    self.turn = pc._color.upper() # wow this is bad
+                    allowable_moves = pc.legal_move_list_generator()
+                    self.turn = king._color.upper()
+                    if( king._location in allowable_moves ):
+                        # target acquired
+                        checkers.append( pc )
+                        break
+                    pass
+                elif( pc != -1 and pc._color == king._color ):
+                    break
+
+                tmp_rank += searchSpaces[ key ][0]
+                tmp_file += searchSpaces[ key ][1]
+                pass
+            pass
+        return checkers
+
     def finishTurn( self ):
+        self.verifyGameIntegrity()
+
         if( self.turn == "WHITE" ):
             self.turn = "BLACK"
         elif( self.turn == "BLACK" ):
             self.turn = "WHITE"
+        else:
+            print( "Turn switch error" )
+            assert( 1 == 0 )
 
     def dump_pieces( self ):
         board_status = {}
@@ -187,8 +312,6 @@ class Board():
             return False
         return True
 
-#TODO::Add check and checkmate detection
-
 class Piece():
     _color = []
     _location = []
@@ -212,6 +335,41 @@ class Piece():
             return True
         else:
             return False
+
+    def simulateMove( self, new_pos, func, args ):
+        # removed due to recursion issues when creating list of available
+        # moves, not a good design
+
+        # if not self.legal_move( new_pos ):
+        #     return -2
+
+        # save position to return after function call
+        curr_pos = self._location
+
+        # check if this move results in a taken piece
+        e_rank, e_file = Piece.pos2rankFile( new_pos )
+        enemy_pc = self.parent.pieceAtRankFile( e_rank, e_file )
+        if( enemy_pc != -1 ):
+            # verify that a mistake wasn't made and the piece is occupied by friendly
+            if( enemy_pc._color == self._color ):
+                return -1
+
+            self.parent.sendPieceToGraveyard( enemy_pc ) 
+
+        self._location = new_pos
+
+        # this is where the function can be called to evaluate something
+        # after a particular move
+
+        otpt = func( *args )
+
+        # return everything to the way it was
+        self._location = curr_pos
+        if( enemy_pc != -1 ):
+            if( enemy_pc._color != self._color ):
+                self.parent.returnPiecefromGraveyard( enemy_pc ) 
+        
+        return otpt
 
     @log_move
     def move( self, new_pos ):
@@ -286,11 +444,19 @@ class Piece():
     #      -> Add castling
     #      -> Check if check or checkmate are applicable
     def legal_move_list_generator( self ) -> list:
-        if( self._color.upper() != self.parent.turn ):
+        if( self._color.upper() != self.parent.turn.upper() ):
             return []
 
         curr_row = Piece.get_curr_row( self._location )
         curr_file = Piece.get_curr_file( self._location )
+
+        # need the king associated with piece color to ensure that 
+        # move wouldn't endanger the respective king
+        if( self._color.upper() == "WHITE" ):
+            king = self.parent.getPiecesByName( "King[White]" )
+        elif( self._color.upper() == "BLACK" ):
+            king = self.parent.getPiecesByName( "King[Black]" )
+        assert( king != -1 )
 
         allowable_list = []
         for moves in self.allowable_moves_list:
@@ -310,7 +476,7 @@ class Piece():
 
             pos = Piece.rankFile2pos( curr_row + row_update, curr_file + file_update )
 
-            if not self.parent.board.on_board( Piece.rankFile2pos( curr_row + row_update, curr_file + file_update ) ):
+            if not self.parent.board.on_board( pos ):
                 continue
 
             appendables = []
@@ -324,7 +490,11 @@ class Piece():
                     if self._action_count == 0:
                         pc = self.parent.pieceAtRankFile( tmp_row, tmp_file )
                         if( pc == -1 ):
-                            appendables.append( Piece.rankFile2pos( tmp_row, tmp_file ) )
+                            # simulate move to see if it results in check
+                            outcome = self.simulateMove( Piece.rankFile2pos( tmp_row, tmp_file ),\
+                                            self.parent.inCheck, king )
+                            if not outcome:
+                                appendables.append( Piece.rankFile2pos( tmp_row, tmp_file ) )
                 elif( flags == 't' ):
                     # option for taking, mostly pawns
                     tmp_row = curr_row + row_update
@@ -335,9 +505,13 @@ class Piece():
                     if( pc != -1 ):
                         # check if this piece is the opposite color of this piece
                         if( self._color != pc._color ):
-                            appendables.append( Piece.rankFile2pos( tmp_row, tmp_file ))
+                            # simulate move to see if it results in check
+                            outcome = self.simulateMove( Piece.rankFile2pos( tmp_row, tmp_file ),\
+                                            self.parent.inCheck, king )
+                            if not outcome:
+                                appendables.append( Piece.rankFile2pos( tmp_row, tmp_file ) )
                     pass
-                elif( flags == 'r' ):
+                elif( flags == 'r' or flags == 'f' or flags == 'd' ):
                     tmp_row = curr_row + row_update
                     tmp_file = curr_file + file_update
                     # option for extended diagonal motion
@@ -345,35 +519,13 @@ class Piece():
                         pc_at = self.parent.pieceAtRankFile( tmp_row, tmp_file )
                         if( pc_at != -1 and pc_at._color == self._color ):
                             break
-                        appendables.append( Piece.rankFile2pos( tmp_row, tmp_file ) )
-                        tmp_row += row_update
-                        tmp_file += file_update
-                        if( pc_at != -1 and pc_at._color != self._color ):
-                            break
-                    pass
-                elif( flags == 'f' ):
-                    tmp_row = curr_row + row_update
-                    tmp_file = curr_file + file_update
-                    # option for extended diagonal motion
-                    while( self.pos2alpha( Piece.rankFile2pos( tmp_row, tmp_file ) ) != 'n99' ):
-                        pc_at = self.parent.pieceAtRankFile( tmp_row, tmp_file )
-                        if( pc_at != -1 and pc_at._color == self._color ):
-                            break
-                        appendables.append( Piece.rankFile2pos( tmp_row, tmp_file ) )
-                        tmp_row += row_update
-                        tmp_file += file_update
-                        if( pc_at != -1 and pc_at._color != self._color ):
-                            break
-                    pass
-                elif( flags == 'd' ):
-                    tmp_row = curr_row + row_update
-                    tmp_file = curr_file + file_update
-                    # option for extended diagonal motion
-                    while( self.pos2alpha( Piece.rankFile2pos( tmp_row, tmp_file ) ) != 'n99' ):
-                        pc_at = self.parent.pieceAtRankFile( tmp_row, tmp_file )
-                        if( pc_at != -1 and pc_at._color == self._color ):
-                            break
-                        appendables.append( Piece.rankFile2pos( tmp_row, tmp_file ) )
+
+                        # simulate move to see if it results in check
+                        outcome = self.simulateMove( Piece.rankFile2pos( tmp_row, tmp_file ),\
+                                        self.parent.inCheck, king )
+                        if not outcome:
+                            appendables.append( Piece.rankFile2pos( tmp_row, tmp_file ) )
+
                         tmp_row += row_update
                         tmp_file += file_update
                         if( pc_at != -1 and pc_at._color != self._color ):
@@ -383,17 +535,20 @@ class Piece():
                     # special flag for castling
                     pass
                 else:
-                    pc = self.parent.pieceAtRankFile( curr_row + row_update, curr_file + file_update )
-                    if( pc == -1 or pc._color != self._color ):
-                        appendables.append( pos )
+                    print( "Unrecognized flag" )
+                    pass
             else:
-                pc = self.parent.pieceAtRankFile( curr_row + row_update, curr_file + file_update )
+                tmp_row = curr_row + row_update
+                tmp_file = curr_file + file_update
+                pc = self.parent.pieceAtRankFile( tmp_row, tmp_file )
                 if( pc == -1 or pc._color != self._color ):
-                    appendables.append( pos )
+                    # simulate move to see if it results in check
+                    outcome = self.simulateMove( Piece.rankFile2pos( tmp_row, tmp_file ),\
+                                    self.parent.inCheck, king )
+                    if not outcome:
+                        appendables.append( Piece.rankFile2pos( tmp_row, tmp_file ) )
 
             allowable_list += appendables            
-            # if append:
-            #     allowable_list.append( Piece.rankFile2pos( curr_row + row_update, curr_file + file_update ) )
  
         return allowable_list
 
@@ -467,9 +622,11 @@ if __name__ == "__main__":
 
     # cs.pieces[0].move( Piece.alpha2pos( 'a7' ) ) 
 
-    i = Piece.alpha2pos( 'a8' )
+    i, j = Piece.pos2rankFile( 81 )
     print( i )
+    print( j )
     print( Piece.pos2rankFile( i ) )
     print( Piece.pos2rankFile( 10 ) )
+    print( Piece.alpha2pos( 'b4' ) )
 
     print( json.dumps( cs.dump_pieces() ) )

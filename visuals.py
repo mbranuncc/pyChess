@@ -116,7 +116,8 @@ class VisualBoard( Visual ):
         i = 0
         j = 0
         for square in square_info:
-            rec = shapes.BorderedRectangle(x=square[0], y=square[1], width=square[2], height=square[3], border=2, border_color=self.baseBorderColor, batch=self.batch )
+            rec = shapes.BorderedRectangle(x=square[0], y=square[1], width=square[2],\
+                height=square[3], border=3, border_color=self.baseBorderColor, batch=self.batch )
             rec.opacity = 250
 
             Matrix[ i ][ j ] = rec

@@ -47,5 +47,9 @@
         <move>0,+1</move>
         <move>-1,0</move>
         <move>0,-1</move>
+        <move>+1,+1</move>
+        <move>+1,-1</move>
+        <move>-1,-1</move>
+        <move>-1,+1</move>
     </Piece>
 </Chess>
